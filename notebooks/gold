@@ -1,0 +1,77 @@
+# Databricks notebook source
+from pyspark.sql import SparkSession
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
+from pyspark.sql.window import Window
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ## GOLD LAYER
+
+# COMMAND ----------
+
+gold_erp_CUST_AZ12_df=spark.read.format("delta").load("/Volumes/project/silver/processed_data/erp/silver_erp_CUST_AZ12")
+gold_erp_PX_CAT_G1V2_df=spark.read.format("delta").load("/Volumes/project/silver/processed_data/erp/silver_erp_LOC_A101")
+gold_erp_LOC_A101_df=spark.read.format("delta").load("/Volumes/project/silver/processed_data/erp/erp_PX_CAT_G1V2")
+gold_crm_cust_df=spark.read.format("delta").load("/Volumes/project/silver/processed_data/crm/crm_cust_df")
+gold_crm_prd_info_df=spark.read.format("delta").load("/Volumes/project/silver/processed_data/crm/crm_prd_info_df")
+gold_crm_sales_details_df=spark.read.format("delta").load("/Volumes/project/silver/processed_data/crm/crm_sales_details_df")
+
+# COMMAND ----------
+
+gold_crm_cust_df.show()
+gold_crm_prd_info_df.show()
+gold_crm_sales_details_df.show()
+gold_erp_CUST_AZ12_df.show()
+gold_erp_LOC_A101_df.show()
+gold_erp_PX_CAT_G1V2_df.show()
+
+# COMMAND ----------
+
+gold_prd=gold_crm_prd_info_df.join(gold_erp_LOC_A101_df,gold_crm_prd_info_df.category_id == gold_erp_LOC_A101_df.id, "left")
+gold_prd= gold_prd.select(F.row_number().over(Window.orderBy("prd_id","prd_start_dt")).alias("product_key"),F.col("prd_id").alias("product_id"),F.col("category_id"),F.col("prd_key").alias("product_number"),F.col("prd_nm").alias("product_name"),F.col("category"),F.col("sub_category"),F.col("maintenance"),F.col("prd_cost").alias("product_cost"),F.col("prd_line").alias("product_line"),F.col("prd_start_dt").alias("product_start_date"))
+#.filter(F.col("end_date").isNotNull())
+gold_prd.display()
+
+# COMMAND ----------
+
+gold_prd.write.mode("overwrite").format("delta")\
+.save("/Volumes/project/gold/products")
+
+# COMMAND ----------
+
+gold_cust=gold_crm_cust_df.join(gold_erp_CUST_AZ12_df, gold_crm_cust_df.cst_key == gold_erp_CUST_AZ12_df.customer_id, "left").join(gold_erp_PX_CAT_G1V2_df, gold_crm_cust_df.cst_key == gold_erp_PX_CAT_G1V2_df.customer_id, "left")
+gold_cust= gold_cust.select(F.row_number().over(Window.orderBy(F.col("cst_create_date"))).alias("customer_key"),F.col("cst_id").alias("customer_id"),F.col("cst_key").alias("customer_number"),F.col("cst_firstname").alias("customer_firstname"),F.col("cst_lastname").alias("customer_lastname"),F.col("cst_marital_status").alias("customer_marital_status"),
+ F.when(F.col("cst_gndr") =="N/A",F.upper(F.col("gender"))).otherwise(F.col("cst_gndr")).alias("customer_gender"),F.col("cst_create_date").alias("customer_create_date"),F.col("birth_date"),F.col("country"))
+gold_cust.display()
+
+
+# COMMAND ----------
+
+gold_cust.write.mode("overwrite").format("delta")\
+.save("/Volumes/project/gold/customer")
+
+# COMMAND ----------
+
+gold_sales=gold_crm_sales_details_df.join(gold_prd,gold_crm_sales_details_df.sls_prd_key == gold_prd.product_number, "left").join(gold_cust,gold_crm_sales_details_df.sls_cust_id == gold_cust.customer_id, "left")
+gold_sales= gold_sales.select(  F.col("sls_ord_num").alias("order_number"),
+                  F.col("product_key").alias("product_key"),
+                      F.col("customer_key").alias("customer_key"), 
+    F.col("sls_order_dt").alias("order_date"),
+    F.col("sls_ship_dt").alias("ship_date"),
+    F.col("sls_due_dt").alias("due_date"),
+    F.col("sls_price").alias("sls_price"),
+    F.col("sls_quantity").alias("quantity"),
+    F.col("sls_sales").alias("sales_amount"),
+    
+
+ 
+    )
+gold_sales.display()
+
+
+# COMMAND ----------
+
+gold_sales.write.mode("overwrite").format("delta")\
+.save("/Volumes/project/gold/sales")
