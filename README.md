@@ -1,16 +1,16 @@
-Overview:
-Built a scalable sales data pipeline using PySpark on Databricks with Bronze → Silver → Gold architecture. The pipeline is orchestrated via Databricks Jobs.
+# Sales Data Pipeline (PySpark / Databricks)
 
-Key Points:
+## Overview
+Built a scalable sales data pipeline using PySpark on Databricks with a **Bronze → Silver → Gold** architecture. The pipeline is orchestrated using Databricks Jobs for automated execution.
 
-Bronze: Raw data ingestion
+## Key Points
+- Bronze: Ingest raw sales data
+- Silver: Clean and transform data
+- Gold: Aggregate and prepare analytics-ready datasets
+- Orchestration: Automated via Databricks Jobs
 
-Silver: Data cleaning & transformation
+## Tech
+PySpark, Delta Lake, Databricks Jobs
 
-Gold: Aggregated, analytics-ready data
-
-Orchestration: Automated with Databricks Jobs
-
-Tech: PySpark, Delta Lake, Databricks Jobs
-
-Outcome: Reliable, automated pipeline providing clean and aggregated sales datasets for BI and analytics.
+## Outcome
+Reliable, automated pipeline providing clean and aggregated sales datasets ready for BI and analytics.
